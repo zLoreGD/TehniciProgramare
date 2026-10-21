@@ -1,12 +1,20 @@
 {
-  "url": "https://cybercor.org/",
+  "url": "https://cybercor.org",
+  "final_url": "https://cybercor.org/",
   "cod_stare": 200,
-  "titlu": null,
-  "ip": "172.67.211.96",
+  "titlu": "CYBERCOR",
+  "ip": "104.21.91.71",
   "lant": [],
+  "antete_securitate": {
+    "Strict-Transport-Security": false,
+    "Content-Security-Policy": false,
+    "X-Frame-Options": true,
+    "X-Content-Type-Options": true,
+    "Referrer-Policy": true
+  },
   "scor": "3/5",
-  "days_left": 20790.692442129628,
-  "internal_count": 2,
-  "external_count": 2,
+  "days_left": 43,
+  "internal_count": 0,
+  "external_count": 0,
   "disallowed": []
 }

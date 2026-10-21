@@ -1,162 +1,145 @@
 # Laborator: funcții, metode și importuri pe web
 # Student: <Gorceag Vlad>
+from __future__ import annotations
+
 import time
-BASE_URL = "https://cybercor.org"
-ECHO_URL = "https://httpbin.org"
-TIMEOUT = 10  # secunde
+from urllib.parse import urljoin
 import requests
 
-#ex21
-def fetch(url:str,timeout = 10)->requests.Response:
-    response = requests.get(url,timeout=timeout)
-    return response.status_code 
-#print(fetch(BASE_URL))
+BASE_URL = "https://cybercor.org"
+TIMEOUT = 10
+SECURITY_HEADERS = (
+    "Strict-Transport-Security",
+    "Content-Security-Policy",
+    "X-Frame-Options",
+    "X-Content-Type-Options",
+    "Referrer-Policy",
+)
 
-#ex22
-def get_status(url:str)->int:
-    response = requests.get(BASE_URL + url)
+
+def fetch(url: str, timeout: float = TIMEOUT) -> requests.Response:
+    """Trimite o cerere GET și returnează obiectul Response."""
+    return requests.get(url, timeout=timeout)
+
+
+def get_status(path: str) -> int:
+    """Returnează codul HTTP pentru o cale relativă la BASE_URL."""
+    response = requests.get(urljoin(BASE_URL + "/", path.lstrip("/")), timeout=TIMEOUT)
     return response.status_code
-"""
-time.sleep(1)
-print(get_status("/"))
-time.sleep(1)
-print(get_status("/robots.txt"))
-time.sleep(1)
-print(get_status("/sitemap.xml"))
-"""
 
-#ex23
-"""
-print(fetch(BASE_URL))
-print(fetch(BASE_URL,3))
-"""
 
-#ex24
-def get_title(html:str):
-    """Get the title from a page by getting text content from <title> tags."""
-    findtext = html.find("<title>")
-    endtext = html.find("</title>")
-    title = html[findtext + len("<title>"):endtext]
-    cleantitle = title.strip()
-    print(cleantitle)
-"""
-response = requests.get(BASE_URL)
-html_text = response.text
-get_title(html_text)
-"""
+def get_title(html: str) -> str | None:
+    """Extrage și returnează titlul HTML; întoarce None dacă lipsește."""
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html, "html.parser")
+    return soup.title.get_text(" ", strip=True) if soup.title else None
 
-#ex27
-def page_exists(url:str)->bool:
+
+def page_exists(url: str) -> bool:
+    """Returnează True dacă serverul răspunde cu un cod de stare sub 400."""
     try:
-        response = requests.get(url)
-        if response:
-            return True
+        response = requests.get(url, timeout=TIMEOUT)
+        return response.status_code < 400
     except requests.RequestException:
         return False
-"""
-print(page_exists(BASE_URL))
-print(page_exists("https://this-domain-does-not-exist.invalid"))
-"""
-
-#ex28
-def check_paths(base,paths:list)->list:
-    result = []
-    for i in range(len(paths)):
-        response = requests.get(base + paths[i])
-        result.append({
-            "path":base + paths[i],
-            "status_code":response.status_code
-        })
-    return result
-"""
-list =["/", "/robots.txt", "/sitemap.xml"]
-result = check_paths(BASE_URL,list)
-print(result)
-"""
-
-#ex29
-def get_header(url:str, name:str, default="lipseste")->requests.head:
-    response = requests.get(url)
-    if response.headers.get("name",name):
-        return response.headers
-
-#print(get_header(BASE_URL,"Server"))
 
 
-#ex 30
-def security_headers(url:str)->list:
-    headers_list = ["Strict-Transport-Security","Content-Security-Policy","X-Frame-Options","X-Content-Type-Options","Referrer-Policy"]
-    response = requests.get(url)
-    result = []
-
-    for i in range(len(headers_list)):
-        if response.headers.get(headers_list[i]):
-            result.append({
-                "antet":headers_list[i],
-                "valoare":True
-                
-            })
-        else:
-            result.append({
-                "antet":headers_list[i],
-                "valoare":False                
-            })
+def check_paths(base: str, paths: list[str]) -> dict[str, int]:
+    """Verifică o listă de căi și returnează o mapare cale–cod HTTP."""
+    result = {}
+    for path in paths:
+        full_url = urljoin(base.rstrip("/") + "/", path.lstrip("/"))
+        try:
+            response = requests.get(full_url, timeout=TIMEOUT)
+            result[path] = response.status_code
+        except requests.RequestException:
+            result[path] = 0
+        time.sleep(1)
     return result
 
-#print(security_headers(BASE_URL))
-#ex 31
-def score_headers(results:list)->str:
-    count = 0
-    for result in results:
-        if result['valoare'] == True:
-            count += 1
-    return f"{count}/5"
-#print(score_headers(security_headers(BASE_URL)))
 
-#ex 32
-def fetch_robots(base:str)->str:
-    robots = "/robots.txt"
-    response = requests.get(base + robots)
-    if response.text:
-        return  response.text
-    else:
-        return "None"
+def get_header(url: str, name: str, default: str | None = None) -> str | None:
+    """Returnează valoarea unui antet HTTP sau valoarea default."""
+    response = requests.get(url, timeout=TIMEOUT)
+    response.raise_for_status()
+    return response.headers.get(name, default)
 
-def dissalowed_paths(robots_text:str)->list:
-    
-    dissalowed = []
-    if robots_text == "None":
-        return [""]
-    dissalow = robots_text.find("Disallow:")
-    if dissalow != -1:
-        for line in robots_text.splitlines():
-            path = line[len("Disallow:"):].strip()
-            dissalowed.append(path)
-    return dissalowed
 
-"""
-print(fetch_robots(BASE_URL))
-print(dissalowed_paths(fetch_robots(BASE_URL)))
-"""
-#ex 33
-def response_times(*urls:str)->list:
+def security_headers(url: str) -> dict[str, bool]:
+    """Verifică prezența antetelor HTTP de securitate."""
+    response = requests.get(url, timeout=TIMEOUT)
+    return {name: bool(response.headers.get(name)) for name in SECURITY_HEADERS}
 
+
+def score_headers(results: dict[str, bool]) -> str:
+    """Returnează scorul antetelor de securitate în formatul X/5."""
+    count = sum(bool(value) for value in results.values())
+    return f"{count}/{len(SECURITY_HEADERS)}"
+
+
+def fetch_robots(base: str) -> str | None:
+    """Descarcă robots.txt; returnează None dacă nu există sau cererea eșuează."""
+    url = urljoin(base.rstrip("/") + "/", "robots.txt")
+    try:
+        response = requests.get(url, timeout=TIMEOUT)
+        if response.status_code == 404 or not response.text.strip():
+            return None
+        response.raise_for_status()
+        return response.text
+    except requests.RequestException:
+        return None
+
+
+def disallowed_paths(robots_text: str | None) -> list[str]:
+    """Extrage doar valorile directivelor Disallow: din robots.txt."""
+    if robots_text is None:
+        return []
+    paths = []
+    for line in robots_text.splitlines():
+        line = line.split("#", 1)[0].strip()
+        if ":" not in line:
+            continue
+        directive, value = line.split(":", 1)
+        if directive.strip().lower() == "disallow":
+            paths.append(value.strip())
+    return paths
+
+
+def response_times(*urls: str) -> list[dict[str, float | str]]:
+    """Măsoară durata cererilor pentru URL-urile primite."""
     result = []
     for url in urls:
-        response = requests.get(BASE_URL + url)
-        result.append({
-            "url":url,
-            "secunde":response.elapsed.seconds
-        })
+        full_url = urljoin(BASE_URL.rstrip("/") + "/", url.lstrip("/"))
+        start = time.perf_counter()
+        try:
+            response = requests.get(full_url, timeout=TIMEOUT)
+            response.raise_for_status()
+            elapsed = time.perf_counter() - start
+            result.append({"url": full_url, "secunde": round(elapsed, 6)})
+        except requests.RequestException:
+            elapsed = time.perf_counter() - start
+            result.append({"url": full_url, "secunde": round(elapsed, 6)})
+        time.sleep(1)
     return result
 
-#print(response_times("/","/robots.txt"))
 
-#ex 34
+def log(message: str, **details: object) -> str:
+    """Construiește un mesaj de jurnal cu detalii opționale."""
+    extra = " ".join(f"{key}={value}" for key, value in details.items())
+    return f"{message} {extra}".strip()
 
-def log(message:str,**details)->str:
-    final_string = f"{message}"
-    for key,value in details.items():
-        final_string += f" {key} : {value}"
-    return final_string
-#print(log("verificat", url=BASE_URL, status=200))
+
+if __name__ == "__main__":
+    print("fetch:", fetch(BASE_URL).status_code)
+    print("get_status('/'): ", get_status("/"))
+    print("get_status(123):")
+    try:
+        get_status(123)  # test negativ cerut în enunț
+    except (AttributeError, TypeError) as exc:
+        print("Argument invalid detectat:", type(exc).__name__)
+    print("Titlu:", get_title(fetch(BASE_URL).text))
+    print("Antete:", security_headers(BASE_URL))
+    print("Scor:", score_headers(security_headers(BASE_URL)))
+    print("Disallow:", disallowed_paths(fetch_robots(BASE_URL)))
+    print("Timpi:", response_times("/", "/robots.txt"))
+    print(log("verificat", url=BASE_URL, status=200))

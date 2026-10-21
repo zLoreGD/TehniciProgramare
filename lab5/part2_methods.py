@@ -1,132 +1,118 @@
 # Laborator: funcții, metode și importuri pe web
 # Student: <Gorceag Vlad>
- 
-BASE_URL = "https://cybercor.org"
-ECHO_URL = "https://httpbin.org"
-TIMEOUT = 10  # secunde
+import time
 import requests
 
-"""
-#ex 9
-response = requests.get(BASE_URL)
-print(response.status_code) #atribut
-print(response.ok) #atribut
-print(response.url) #atribut
-print(response.encoding) #atribut
-"""
-
-"""
-#ex 10
-response = requests.get(BASE_URL)
-response.raise_for_status()
-
-try:
-    response1 = requests.get(BASE_URL + "/this-page-does-not-exist")
-    response1.raise_for_status()
-    print("lucreaza")
-except requests.HTTPError:
-    print("un mesaj prietenos")
-"""
-
-"""
-#ex11
-response = requests.get(BASE_URL)
-for key,value in response.headers.items():
-    print(f"{key}:{value}")
-"""
-
-"""
-#ex12
-response = requests.get(BASE_URL)
-server = response.headers.get("Server","lipsește")
-content = response.headers.get("Content-Type","lipsește")
-content2 = response.headers.get("content-type")
-print(server)
-print(content)
-print(content2)
-"""
-
-"""
-#ex13
-response = requests.get(BASE_URL)
-print("Cyber este intalnit de: ", response.text.lower().count("cyber"), " ori.")
-"""
+BASE_URL = "https://cybercor.org"
+ECHO_URL = "https://httpbin.org"
+TIMEOUT = 10
 
 
-"""
-#ex14
-response = requests.get(BASE_URL)
-findtext = response.text.find("<title>")
-endtext = response.text.find("</title>")
-
-title = response.text[findtext + len("<title>"):endtext]
-
-cleantitle = title.strip()
-print(cleantitle)
-"""
+def ex9():
+    response = requests.get(BASE_URL, timeout=TIMEOUT)
+    print("status_code:", response.status_code)
+    print("ok:", response.ok)
+    print("url:", response.url)
+    print("encoding:", response.encoding)
 
 
-
-"""
-#ex15
-response = requests.get(BASE_URL)
-site_lines = response.text.splitlines()
-max_string = max(site_lines,key=len)
-line_count = 0
-for lines in site_lines:
-    line_count += 1
-print(line_count)
-print("Lungimea celei mai lungi linii: ", len(max_string))
-"""
-
-"""
-#ex16
-response = requests.get(BASE_URL)
-if response.url.startswith("https://"):
-    print("Conexiune securizata")
-else:
-    print("Conexiune nesecurizata")
-"""
+def ex10():
+    response = requests.get(BASE_URL, timeout=TIMEOUT)
+    response.raise_for_status()
+    try:
+        bad_response = requests.get(
+            BASE_URL + "/this-page-does-not-exist",
+            timeout=TIMEOUT,
+        )
+        bad_response.raise_for_status()
+        print("Cererea a reușit.")
+    except requests.HTTPError:
+        print("Pagina nu a fost găsită sau serverul a returnat o eroare HTTP.")
 
 
-"""
-#ex17
-non_secure = "http://cybercor.org"
-response = requests.get(non_secure)
-if response.history:
-    print("Redirect: ")
-    for raspuns in response.history:
-        print(f"codul de stare {raspuns.status_code} | current url: {raspuns.url}")
-else:
-    print("Redirecturi nu sunt.")
-
-print(f"Url-ul si codul final: {response.status_code} | cod: {response.url}")
-"""
-
-"""
-#ex18
-response1 = requests.get(BASE_URL)
-response2 = requests.head(BASE_URL)
-print(f"Lungimea folosind .get() {len(response1.content)}")
-print(f"Lungimea folosind .head() {len(response2.content)}")
-"""
-
-"""
-#ex19
-response = requests.get(BASE_URL)
-if response.cookies:
-    for cookie in response.cookies:
-        print(f"Cookie gasit: {cookie.name} | {cookie.secure}")
-else:
-    print("Nici un cookie setat.")
-"""
-
-"""
-#ex20
-session = requests.Session()
-session.headers.update({"User-Agent": "WebLab-Gorceag Vlad"})
-session.get(ECHO_URL,"/headers",)
-print(session.headers)
-"""
+def ex11():
+    response = requests.get(BASE_URL, timeout=TIMEOUT)
+    for key, value in response.headers.items():
+        print(f"{key}: {value}")
 
 
+def ex12():
+    response = requests.get(BASE_URL, timeout=TIMEOUT)
+    print(response.headers.get("Server", "lipsește"))
+    print(response.headers.get("Content-Type", "lipsește"))
+    # Numele antetelor HTTP nu depind de majuscule/minuscule.
+    print(response.headers.get("content-type", "lipsește"))
+
+
+def ex13():
+    response = requests.get(BASE_URL, timeout=TIMEOUT)
+    response.raise_for_status()
+    print("Cuvântul 'cyber' apare de", response.text.lower().count("cyber"), "ori.")
+
+
+def ex14():
+    from bs4 import BeautifulSoup
+    response = requests.get(BASE_URL, timeout=TIMEOUT)
+    response.raise_for_status()
+    soup = BeautifulSoup(response.text, "html.parser")
+    print(soup.title.get_text(strip=True) if soup.title else "Titlul lipsește.")
+
+
+def ex15():
+    response = requests.get(BASE_URL, timeout=TIMEOUT)
+    response.raise_for_status()
+    lines = response.text.splitlines()
+    print("Număr de linii:", len(lines))
+    print("Lungimea celei mai lungi linii:", max((len(line) for line in lines), default=0))
+
+
+def ex16():
+    response = requests.get(BASE_URL, timeout=TIMEOUT)
+    print("Conexiune securizată" if response.url.startswith("https://")
+          else "Conexiune nesecurizată")
+
+
+def ex17():
+    response = requests.get("http://cybercor.org", timeout=TIMEOUT, allow_redirects=True)
+    if response.history:
+        print("Redirecționări:")
+        for item in response.history:
+            print(f"{item.status_code} | {item.url}")
+    else:
+        print("Nu au fost detectate redirecționări.")
+    print(f"URL final: {response.url} | cod: {response.status_code}")
+
+
+def ex18():
+    get_response = requests.get(BASE_URL, timeout=TIMEOUT)
+    head_response = requests.head(BASE_URL, timeout=TIMEOUT, allow_redirects=True)
+    print("Lungime GET:", len(get_response.content))
+    print("Lungime HEAD:", len(head_response.content),
+          "(de regulă, HEAD nu returnează corpul paginii)")
+
+
+def ex19():
+    response = requests.get(BASE_URL, timeout=TIMEOUT)
+    if response.cookies:
+        for cookie in response.cookies:
+            print(f"Cookie: {cookie.name} | secure={cookie.secure}")
+    else:
+        print("Nu a fost setat niciun cookie.")
+
+
+def ex20():
+    with requests.Session() as session:
+        session.headers.update({"User-Agent": "WebLab-Gorceag Vlad"})
+        response = session.get(ECHO_URL + "/headers", timeout=TIMEOUT)
+        response.raise_for_status()
+        print("Antetele sesiunii:", session.headers)
+        print("Antetele observate de server:", response.json())
+
+
+if __name__ == "__main__":
+    for exercise in (ex9, ex10, ex11, ex12, ex13, ex14, ex15, ex16, ex17, ex18, ex19, ex20):
+        try:
+            exercise()
+        except (requests.RequestException, ValueError) as exc:
+            print(f"Eroare în {exercise.__name__}: {exc}")
+        time.sleep(1)

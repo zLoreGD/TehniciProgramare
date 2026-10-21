@@ -1,44 +1,38 @@
 # Laborator: funcții, metode și importuri pe web
 # Student: <Gorceag Vlad>
-BASE_URL = "https://cybercor.org"
-ECHO_URL = "https://httpbin.org"
-TIMEOUT = 10  # secunde
-import webtools
 import argparse
 import json
-#webtools.get_title(webtools.fetch(BASE_URL).text)
 
-#ex45
-from webtools import get_title, security_headers
-from webtools import DEFAULT_HEADERS
-# Daca main.py de asemenea defineste get_Title(), functia locala va avea prioritate asupra get_title() care a fost importat
-"""
-print(DEFAULT_HEADERS)
-print(webtools.fetch(BASE_URL))
-"""
-
-"""
-#ex48
-parser = argparse.ArgumentParser()
-parser.add_argument("url",type=str)
-
-args = parser.parse_args()
-
-print(webtools.security_headers(args.url))
-#print(args.url)
-"""
+import webtools
 
 
-#ex49
-import csv
-list =["/", "/robots.txt", "/sitemap.xml"]
-print(webtools.check_paths(BASE_URL,list))
+def main() -> None:
+    """Citește URL-ul din linia de comandă și afișează raportul."""
+    parser = argparse.ArgumentParser(description="Generează un raport despre un site web.")
+    parser.add_argument(
+        "url",
+        nargs="?",
+        default=webtools.BASE_URL,
+        help="URL complet sau cale relativă (implicit: site-ul de bază)",
+    )
+    parser.add_argument(
+        "--output",
+        default="report.json",
+        help="Fișierul JSON de ieșire (implicit: report.json)",
+    )
+    args = parser.parse_args()
 
-result = webtools.check_paths(BASE_URL,list)
-fieldnames = result[0].keys()
-with open("report.csv","w") as file:
-    writer = csv.DictWriter(file,fieldnames=fieldnames)
-    writer.writeheader()
-    writer.writerows(result)
+    report = webtools.site_report(args.url, args.output)
+    print(json.dumps(report, indent=2, ensure_ascii=False))
 
-webtools.site_report("/")
+
+if __name__ == "__main__":
+    # Test negativ cerut în laborator: get_status primește un tip invalid.
+    try:
+        webtools.get_status(123)
+    except TypeError:
+        print("Test get_status(123): PASS — TypeError detectat.")
+    else:
+        raise AssertionError("get_status(123) trebuia să ridice TypeError.")
+
+    main()

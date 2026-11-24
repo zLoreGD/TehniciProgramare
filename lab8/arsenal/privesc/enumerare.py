@@ -1,117 +1,107 @@
+"""arsenal/privesc/enumerare.py - enumerare SUID / sudo / cron.
 
-#ex A1
-import argparse, json, os
+Rulare (din folderul lab8):
+    python -m arsenal.privesc.enumerare start           # rezumat + salveaza enum.json
+    python -m arsenal.privesc.enumerare start --json    # doar JSON curat pe stdout
+"""
+import argparse
+import json
+import os
+
+# A3: executabile pentru care exista tehnici de escaladare (GTFOBins)
+GTFO = {"find", "vim.basic", "vim", "nmap", "cp", "bash",
+        "less", "awk", "python3", "perl"}
 
 
 def citeste_linii(cale) -> list:
+    """A1: liniile curate din fisier (fara goluri si fara comentarii)."""
     with open(cale, encoding="utf-8") as f:
-        liste = []
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith("#"):
-                liste.append(line)
-        return liste
- 
-cai = citeste_linii("/home/vlad/Desktop/Univer/tehniciprogramare/lab8/start/suid.txt")
-print("linii SUID:", len(cai))
+        linii = []
+        for linie in f:
+            linie = linie.strip()
+            if linie and not linie.startswith("#"):
+                linii.append(linie)
+        return linii
 
 
-#Ex A2
-def nume(cale)->list:
-    return cale.rsplit('/',1)[-1]
-    #print(cale.rsplit('/',1)[-1])
- 
-nume_unice = {nume(c) for c in cai}    # set comprehension
-print("SUID distincte:", len(nume_unice))
+def nume(cale) -> str:
+    """A2: numele executabilului dintr-o cale ('/bin/cp' -> 'cp')."""
+    return cale.rsplit("/", 1)[-1]
 
 
-#ex3
-GTFO = {"find", "vim.basic", "vim", "nmap", "cp", "bash",
-        "less", "awk", "python3", "perl"}
- 
-def suid_constatari(cale)->list[dict[str,any]]:
-    cai = citeste_linii(cale)
-
-    result = []
-    for path in sorted(set(cai)):
-        dictionar = {
+def suid_constatari(cale) -> list[dict]:
+    """A3: lista de dictionare {cale, nume, risc}, fara duplicate."""
+    rezultat = []
+    for path in sorted(set(citeste_linii(cale))):
+        rezultat.append({
             "cale": path,
-            "nume":nume(path),
-            "risc": "mare" if nume(path) in GTFO else "normal"
-        }
-        result.append(dictionar)
-        print(nume(path))
-    return result
-    
- 
-suid = suid_constatari("/home/vlad/Desktop/Univer/tehniciprogramare/lab8/start/suid.txt")
-mari = [c for c in suid if c["risc"] == "mare"]
-print(len(suid), "SUID,", len(mari), "cu risc mare")
-print(sorted(c["nume"] for c in mari))
+            "nume": nume(path),
+            "risc": "mare" if nume(path) in GTFO else "normal",
+        })
+    return rezultat
 
-#ex4
 
-def sudo_constatari(cale):
+def sudo_constatari(cale) -> list[dict]:
+    """A4: o linie 'user : drept' -> dict cu risc mare daca are NOPASSWD."""
     out = []
     for ln in citeste_linii(cale):
-        user, drept = ln.split(" : ", 1)   # despachetare in tuplu
-        # TODO: adauga {"user": user.strip(), "drept": drept.strip(),
-        #   "risc": "mare" daca "NOPASSWD" in drept, altfel "normal"}
-        result = {
-            "user":user.strip(),
-            "drept":drept.strip(),
-            "risc":"mare" if "NOPASSWD" in drept else "normal"
-        }
-        out.append(result)
+        user, drept = ln.split(" : ", 1)          # despachetare in tuplu
+        out.append({
+            "user": user.strip(),
+            "drept": drept.strip(),
+            "risc": "mare" if "NOPASSWD" in drept else "normal",
+        })
     return out
- 
-def cron_constatari(cale):
-    # TODO: campuri = ln.split(); user = campuri[5];
-    #   comanda = " ".join(campuri[6:]); dict cu user si comanda
+
+
+def cron_constatari(cale) -> list[dict]:
+    """A4: o linie crontab -> user (campul 6) si comanda (restul)."""
     out = []
     for ln in citeste_linii(cale):
         campuri = ln.split()
-        result = {
-            "user":campuri[5],
-            "comanda": " ".join(campuri[6:])
-        }
-        out.append(result)
+        out.append({
+            "user": campuri[5],
+            "comanda": " ".join(campuri[6:]),
+        })
     return out
-        
-def enumereaza(d):
+
+
+def enumereaza(d) -> dict:
     return {
         "suid": suid_constatari(os.path.join(d, "suid.txt")),
         "sudo": sudo_constatari(os.path.join(d, "sudo.txt")),
         "cron": cron_constatari(os.path.join(d, "crontab.txt")),
     }
-rezultate = enumereaza("/home/vlad/Desktop/Univer/tehniciprogramare/lab8/start")
-print("\n=== SUID ===")
-for item in rezultate["suid"]:
-    print(item)
 
-print("\n=== SUDO ===")
-for item in rezultate["sudo"]:
-    print(item)
 
-print("\n=== CRON ===")
-for item in rezultate["cron"]:
-    print(item)
+def utilizatori_implicati(raport) -> set:
+    """Multimea userilor din sudo REUNITA cu cei din cron."""
+    useri_sudo = {c["user"] for c in raport["sudo"]}
+    useri_cron = {c["user"] for c in raport["cron"]}
+    return useri_sudo | useri_cron
+
 
 def main():
-    p = argparse.ArgumentParser()
-    p.add_argument("capturi")
-    p.add_argument("--json", action="store_true")
+    p = argparse.ArgumentParser(description="Enumerare SUID/sudo/cron")
+    p.add_argument("capturi", help="folderul cu suid.txt, sudo.txt, crontab.txt")
+    p.add_argument("--json", action="store_true", help="scoate doar JSON curat")
     a = p.parse_args()
+
     raport = enumereaza(a.capturi)
+
     if a.json:
-        print(json.dumps(raport, indent=2, ensure_ascii=False)); return
+        print(json.dumps(raport, indent=2, ensure_ascii=False))
+        return
+
     for categorie, lista in raport.items():
         mari = [c for c in lista if c.get("risc") == "mare"]
         print(f"{categorie}: {len(lista)} gasite, {len(mari)} cu risc mare")
-    # TODO: utilizatorii implicati = multimea userilor din sudo REUNITA cu cei din cron
+    print("utilizatori implicati:", sorted(utilizatori_implicati(raport)))
+
     with open("enum.json", "w", encoding="utf-8") as f:
         json.dump(raport, f, indent=2, ensure_ascii=False)
     print("Raport salvat in enum.json")
- 
+
+
 if __name__ == "__main__":
     main()

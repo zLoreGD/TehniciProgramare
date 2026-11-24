@@ -1,22 +1,48 @@
-from enumerare import citeste_linii
-def cai(fisier):
-    # TODO: intoarce MULTIMEA cailor din fisier (foloseste citeste_linii din enum)
+"""arsenal/privesc/diferenta.py - ce SUID a aparut fata de un sistem curat.
+
+Rulare (din folderul lab8):
+    python -m arsenal.privesc.diferenta
+    python -m arsenal.privesc.diferenta start/baza_suid.txt start/suid.txt
+"""
+import argparse
+from pathlib import Path
+
+from .enumerare import GTFO, citeste_linii, nume
+
+RADACINA = Path(__file__).resolve().parents[2]      # folderul lab8
+
+
+def cai(fisier) -> set:
+    """B1: MULTIMEA cailor din fisier."""
     return set(citeste_linii(fisier))
 
- 
-baza = cai("start/baza_suid.txt")
-acum = cai("start/suid.txt")
-print("baza:", len(baza), " acum:", len(acum))
 
-noi = acum - baza
-print(len(noi), "SUID noi fata de sistemul curat")
-
-for c in sorted(noi):
-    print(" ", c)
+def noi_fata_de_baza(acum: set, baza: set) -> set:
+    """B2: caile aparute fata de sistemul curat."""
+    return acum - baza
 
 
-from enumerare import nume, GTFO
- 
-risc = {nume(c): ("mare" if nume(c) in GTFO else "normal") for c in noi}
-periculoase = [c for c in sorted(noi) if nume(c) in GTFO]
-print("periculoase NOI:", periculoase)
+def periculoase(noi: set) -> list:
+    """B3: dintre cele noi, cele din dictionarul de risc (GTFO)."""
+    return [c for c in sorted(noi) if nume(c) in GTFO]
+
+
+def main():
+    p = argparse.ArgumentParser(description="Diferenta SUID: curat vs acum")
+    p.add_argument("baza", nargs="?", default=RADACINA / "start" / "baza_suid.txt")
+    p.add_argument("acum", nargs="?", default=RADACINA / "start" / "suid.txt")
+    a = p.parse_args()
+
+    baza, acum = cai(a.baza), cai(a.acum)
+    print("baza:", len(baza), " acum:", len(acum))
+
+    noi = noi_fata_de_baza(acum, baza)
+    print(len(noi), "SUID noi fata de sistemul curat")
+    for c in sorted(noi):
+        print(" ", c)
+
+    print("periculoase NOI:", periculoase(noi))
+
+
+if __name__ == "__main__":
+    main()
